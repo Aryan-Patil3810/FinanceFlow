@@ -1,51 +1,34 @@
+
 import api from "./api";
 
-export async function getCategories(userId) {
-  const response = await api.get("/categories", {
-    params: { userId },
-  });
+// Get categories belonging to the authenticated user
+export async function getCategories() {
+  const response = await api.get("/categories");
 
   return response.data;
 }
 
-export async function createCategory(userId, category) {
-  const response = await api.post(
-    "/categories",
-    category,
-    {
-      params: { userId },
-    }
-  );
+// Create a category for the authenticated user
+export async function createCategory(category) {
+  const response = await api.post("/categories", category);
 
   return response.data;
 }
 
-export async function updateCategory(
-  userId,
-  categoryId,
-  category
-) {
+// Update a category belonging to the authenticated user
+export async function updateCategory(categoryId, category) {
   const response = await api.put(
     `/categories/${categoryId}`,
-    category,
-    {
-      params: { userId },
-    }
+    category
   );
 
   return response.data;
 }
 
-export async function archiveCategory(
-  userId,
-  categoryId
-) {
+// Archive a category belonging to the authenticated user
+export async function archiveCategory(categoryId) {
   const response = await api.patch(
-    `/categories/${categoryId}/archive`,
-    null,
-    {
-      params: { userId },
-    }
+    `/categories/${categoryId}/archive`
   );
 
   return response.data;

@@ -70,6 +70,7 @@ function Transactions() {
     [paymentMethods]
   );
 
+  // Load transactions and supporting data
   useEffect(() => {
     async function loadData() {
       if (!user?.id) {
@@ -87,8 +88,8 @@ function Transactions() {
           categoryData,
           paymentMethodData,
         ] = await Promise.all([
-          getTransactions(user.id),
-          getAccounts(user.id),
+          getTransactions(),
+          getAccounts(),
           getCategories(user.id),
           getPaymentMethods(user.id),
         ]);
@@ -112,6 +113,7 @@ function Transactions() {
     loadData();
   }, [user?.id]);
 
+  // Enrich transactions with account, category and payment method names
   const enrichedTransactions = useMemo(() => {
     return transactions.map((transaction) => {
       const account = accountMap[transaction.accountId];
@@ -192,7 +194,6 @@ function Transactions() {
         if (cancelled) return;
 
         const usdRates = Object.fromEntries(results);
-
         const targetRate = usdRates[displayCurrency];
 
         const calculatedRates = {};
@@ -234,6 +235,7 @@ function Transactions() {
     };
   }, [displayCurrency, enrichedTransactions]);
 
+  // Filter transactions
   const filteredTransactions = useMemo(() => {
     const searchTerm = search.toLowerCase().trim();
 
@@ -258,12 +260,12 @@ function Transactions() {
     });
   }, [enrichedTransactions, activeType, search]);
 
+  // Create a transaction using the authenticated JWT
   async function handleCreateTransaction(transaction) {
     try {
       setError("");
 
       const createdTransaction = await createTransaction(
-        user.id,
         transaction
       );
 
@@ -396,7 +398,7 @@ function Transactions() {
       {/* Add Transaction Modal */}
       {showForm && (
         <TransactionForm
-          userId={user.id}
+          // userId={user.id}
           onClose={() => setShowForm(false)}
           onSubmit={handleCreateTransaction}
         />

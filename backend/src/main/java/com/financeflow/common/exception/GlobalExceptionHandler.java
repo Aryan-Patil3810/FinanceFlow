@@ -43,6 +43,42 @@ public class GlobalExceptionHandler {
                 null
         );
 
+
+
         return ResponseEntity.status(HttpStatus.CONFLICT).body(apiError);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiError> handleInvalidCredentials(
+            InvalidCredentialsException ex) {
+
+        ApiError apiError = new ApiError(
+                401,
+                "Invalid email or password",
+                Instant.now(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(apiError);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleUnexpected(
+            Exception ex) {
+
+        // Log the full exception internally using a logger.
+
+        ApiError apiError = new ApiError(
+                500,
+                "An unexpected error occurred",
+                Instant.now(),
+                null
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(apiError);
     }
 }

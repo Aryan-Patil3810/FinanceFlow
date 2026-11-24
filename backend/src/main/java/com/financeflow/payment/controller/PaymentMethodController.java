@@ -1,11 +1,17 @@
+
 package com.financeflow.payment.controller;
 
 import com.financeflow.payment.dto.CreatePaymentMethodRequest;
 import com.financeflow.payment.dto.PaymentMethodResponse;
 import com.financeflow.payment.dto.UpdatePaymentMethodRequest;
 import com.financeflow.payment.service.PaymentMethodService;
+
 import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,19 +31,23 @@ public class PaymentMethodController {
 
     @PostMapping
     public ResponseEntity<PaymentMethodResponse> createPaymentMethod(
-            @RequestParam UUID userId,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreatePaymentMethodRequest request
     ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+
         PaymentMethodResponse response =
                 paymentMethodService.createPaymentMethod(userId, request);
 
-        return ResponseEntity.status(201).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
     public ResponseEntity<List<PaymentMethodResponse>> getPaymentMethods(
-            @RequestParam UUID userId
+            @AuthenticationPrincipal Jwt jwt
     ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+
         return ResponseEntity.ok(
                 paymentMethodService.getPaymentMethods(userId)
         );
@@ -46,9 +56,11 @@ public class PaymentMethodController {
     @PutMapping("/{paymentMethodId}")
     public ResponseEntity<PaymentMethodResponse> updatePaymentMethod(
             @PathVariable UUID paymentMethodId,
-            @RequestParam UUID userId,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody UpdatePaymentMethodRequest request
     ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+
         PaymentMethodResponse response =
                 paymentMethodService.updatePaymentMethod(
                         paymentMethodId,

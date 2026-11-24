@@ -1,42 +1,35 @@
+
 import api from "./api";
 
-export async function getAccounts(userId) {
-  const response = await api.get("/accounts", {
-    params: { userId },
-  });
+// Get accounts belonging to the authenticated user
+export async function getAccounts() {
+  const response = await api.get("/accounts");
 
   return response.data;
 }
 
-export async function createAccount(userId, account) {
-  const response = await api.post("/accounts", account, {
-    params: { userId },
-  });
+// Create an account for the authenticated user
+export async function createAccount(account) {
+  const response = await api.post("/accounts", account);
 
   return response.data;
 }
 
-export async function updateAccount(userId, accountId, account) {
+// Update an account belonging to the authenticated user
+export async function updateAccount(accountId, account) {
   const response = await api.put(
     `/accounts/${accountId}`,
-    account,
-    {
-      params: { userId },
-    }
+    account
   );
 
   return response.data;
 }
-export async function archiveAccount(userId, accountId) {
-  const response = await api.patch(
-    `/accounts/${accountId}/archive`,
-    null,
-    {
-      params: { userId },
-    }
-  );
 
-  
+// Archive an account belonging to the authenticated user
+export async function archiveAccount(accountId) {
+  const response = await api.patch(
+    `/accounts/${accountId}/archive`
+  );
 
   return response.data;
 }

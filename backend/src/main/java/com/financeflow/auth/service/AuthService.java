@@ -7,6 +7,7 @@ import com.financeflow.user.entity.User;
 import com.financeflow.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.financeflow.common.exception.InvalidCredentialsException;
 
 @Service
 public class AuthService {
@@ -42,9 +43,7 @@ public class AuthService {
                 );
 
         if (!passwordMatches) {
-            throw new IllegalArgumentException(
-                    "Invalid email or password"
-            );
+            throw new InvalidCredentialsException();
         }
 
         String token = jwtService.generateToken(user);

@@ -1,17 +1,14 @@
+
 import api from "./api";
 
-export async function getTransactions(userId) {
-  const response = await api.get("/transactions", {
-    params: { userId },
-  });
+export async function getTransactions() {
+  const response = await api.get("/transactions");
 
   return response.data;
 }
 
-export async function createTransaction(userId, transaction) {
-  const response = await api.post("/transactions", transaction, {
-    params: { userId },
-  });
+export async function createTransaction(transaction) {
+  const response = await api.post("/transactions", transaction);
 
   return response.data;
 }

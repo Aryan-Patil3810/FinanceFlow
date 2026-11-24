@@ -1,3 +1,4 @@
+
 package com.financeflow.account.service;
 
 import com.financeflow.account.dto.AccountResponse;
@@ -44,9 +45,7 @@ public class AccountService {
         this.transferRepository = transferRepository;
     }
 
-    // =========================
     // CREATE ACCOUNT
-    // =========================
 
     @Transactional
     public AccountResponse createAccount(
@@ -58,9 +57,15 @@ public class AccountService {
                 .orElseThrow(() ->
                         new IllegalArgumentException("User not found"));
 
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new IllegalArgumentException("Account name is required");
+        }
+
+        String accountName = request.getName().trim();
+
         if (accountRepository.existsByUserIdAndNameIgnoreCase(
                 userId,
-                request.getName()
+                accountName
         )) {
             throw new IllegalArgumentException(
                     "Account name is already registered for this user"
@@ -70,7 +75,7 @@ public class AccountService {
         Account account = new Account();
 
         account.setUser(user);
-        account.setName(request.getName());
+        account.setName(accountName);
         account.setAccountType(request.getAccountType());
         account.setCurrency(request.getCurrency());
         account.setOpeningBalance(request.getOpeningBalance());
@@ -82,9 +87,7 @@ public class AccountService {
         return toResponse(savedAccount);
     }
 
-    // =========================
-    // GET ALL ACCOUNTS
-    // =========================
+    // GET ALL ACCOUNTS FOR AUTHENTICATED USER
 
     @Transactional(readOnly = true)
     public List<AccountResponse> getAccounts(UUID userId) {
@@ -99,38 +102,40 @@ public class AccountService {
                 .toList();
     }
 
-    // =========================
-    // GET SINGLE ACCOUNT
-    // =========================
+    // GET SINGLE ACCOUNT WITH OWNERSHIP CHECK
 
     @Transactional(readOnly = true)
-    public AccountResponse getAccount(UUID accountId) {
+    public AccountResponse getAccount(
+            UUID userId,
+            UUID accountId
+    ) {
 
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Account not found"));
+        Account account = getOwnedAccount(userId, accountId);
 
         return toResponse(account);
     }
 
-    // =========================
-    // UPDATE ACCOUNT
-    // =========================
+    // UPDATE ACCOUNT WITH OWNERSHIP CHECK
 
     @Transactional
     public AccountResponse updateAccount(
+            UUID userId,
             UUID accountId,
             UpdateAccountRequest request
     ) {
 
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Account not found"));
+        Account account = getOwnedAccount(userId, accountId);
 
-        if (!account.getName().equalsIgnoreCase(request.getName())
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new IllegalArgumentException("Account name is required");
+        }
+
+        String accountName = request.getName().trim();
+
+        if (!account.getName().equalsIgnoreCase(accountName)
                 && accountRepository.existsByUserIdAndNameIgnoreCase(
-                account.getUser().getId(),
-                request.getName()
+                userId,
+                accountName
         )) {
 
             throw new IllegalArgumentException(
@@ -138,7 +143,7 @@ public class AccountService {
             );
         }
 
-        account.setName(request.getName());
+        account.setName(accountName);
         account.setAccountType(request.getAccountType());
         account.setCurrency(request.getCurrency());
         account.setOpeningBalance(request.getOpeningBalance());
@@ -149,16 +154,15 @@ public class AccountService {
         return toResponse(updatedAccount);
     }
 
-    // =========================
-    // ARCHIVE ACCOUNT
-    // =========================
+    // ARCHIVE ACCOUNT WITH OWNERSHIP CHECK
 
     @Transactional
-    public AccountResponse archiveAccount(UUID accountId) {
+    public AccountResponse archiveAccount(
+            UUID userId,
+            UUID accountId
+    ) {
 
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Account not found"));
+        Account account = getOwnedAccount(userId, accountId);
 
         if (account.getStatus() == AccountStatus.ARCHIVED) {
             throw new IllegalArgumentException(
@@ -173,9 +177,19 @@ public class AccountService {
         return toResponse(archivedAccount);
     }
 
-    // =========================
+    // CENTRALIZED OWNERSHIP CHECK
+
+    private Account getOwnedAccount(
+            UUID userId,
+            UUID accountId
+    ) {
+
+        return accountRepository.findByIdAndUser_Id(accountId, userId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Account not found"));
+    }
+
     // ACCOUNT RESPONSE MAPPER
-    // =========================
 
     private AccountResponse toResponse(Account account) {
 
@@ -194,15 +208,12 @@ public class AccountService {
         );
     }
 
-    // =========================
     // CURRENT BALANCE CALCULATION
-    // =========================
 
     private BigDecimal calculateCurrentBalance(Account account) {
 
         BigDecimal balance = account.getOpeningBalance();
 
-        // Transactions occurring on or after the opening balance date
         List<FinancialTransaction> transactions =
                 transactionRepository
                         .findByAccount_IdAndTransactionDateGreaterThanEqual(
@@ -228,6 +239,7 @@ public class AccountService {
         }
 
         // Transfers received
+
         List<Transfer> incomingTransfers =
                 transferRepository
                         .findByDestinationAccount_IdAndTransferDateGreaterThanEqual(
@@ -236,11 +248,11 @@ public class AccountService {
                         );
 
         for (Transfer transfer : incomingTransfers) {
-
             balance = balance.add(transfer.getAmount());
         }
 
         // Transfers sent
+
         List<Transfer> outgoingTransfers =
                 transferRepository
                         .findBySourceAccount_IdAndTransferDateGreaterThanEqual(
@@ -249,7 +261,6 @@ public class AccountService {
                         );
 
         for (Transfer transfer : outgoingTransfers) {
-
             balance = balance.subtract(transfer.getAmount());
         }
 

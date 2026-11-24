@@ -1,3 +1,4 @@
+
 import {
   Archive,
   Edit3,
@@ -17,8 +18,6 @@ import {
   archiveCategory,
 } from "../services/categoryService";
 import { useAuth } from "../context/AuthContext";
-
-const USER_ID = "9a522adc-d97e-4c63-a6d5-099f179d2319";
 
 const CATEGORY_TYPES = [
   {
@@ -44,9 +43,9 @@ const CATEGORY_TYPES = [
 ];
 
 function Categories() {
-  const {user}=useAuth();
-  const [categories, setCategories] = useState([]);
+  const { user } = useAuth();
 
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -65,28 +64,46 @@ function Categories() {
   });
 
   useEffect(() => {
-    loadCategories();
-  }, [user?.id]);
+    let cancelled = false;
 
-  async function loadCategories() {
-    try {
-      setLoading(true);
-      setError("");
+    async function loadCategories() {
+      if (!user?.id) {
+        setCategories([]);
+        setLoading(false);
+        return;
+      }
 
-      const data = await getCategories(user.id);
+      try {
+        setLoading(true);
+        setError("");
 
-      setCategories(data);
-    } catch (err) {
-      console.error(err);
+        const data = await getCategories();
 
-      setError(
-        err.response?.data?.message ||
-          "Failed to load categories."
-      );
-    } finally {
-      setLoading(false);
+        if (!cancelled) {
+          setCategories(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error("Unable to load categories:", err);
+
+        if (!cancelled) {
+          setError(
+            err.response?.data?.message ||
+              "Failed to load categories."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  }
+
+    loadCategories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   function openCreateForm() {
     setEditingCategory(null);
@@ -123,10 +140,16 @@ function Categories() {
 
     setShowForm(false);
     setEditingCategory(null);
+    setError("");
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (!user?.id) {
+      setError("Please sign in to manage categories.");
+      return;
+    }
 
     const trimmedName = form.name.trim();
 
@@ -139,14 +162,15 @@ function Categories() {
       setSaving(true);
       setError("");
 
+      const payload = {
+        name: trimmedName,
+        categoryType: form.categoryType,
+      };
+
       if (editingCategory) {
         const updatedCategory = await updateCategory(
-          user.id,
           editingCategory.id,
-          {
-            name: trimmedName,
-            categoryType: form.categoryType,
-          }
+          payload
         );
 
         setCategories((current) =>
@@ -157,13 +181,7 @@ function Categories() {
           )
         );
       } else {
-        const createdCategory = await createCategory(
-          user.id,
-          {
-            name: trimmedName,
-            categoryType: form.categoryType,
-          }
-        );
+        const createdCategory = await createCategory(payload);
 
         setCategories((current) => [
           ...current,
@@ -171,9 +189,10 @@ function Categories() {
         ]);
       }
 
-      closeForm();
+      setShowForm(false);
+      setEditingCategory(null);
     } catch (err) {
-      console.error(err);
+      console.error("Unable to save category:", err);
 
       setError(
         err.response?.data?.message ||
@@ -189,6 +208,11 @@ function Categories() {
       return;
     }
 
+    if (!user?.id) {
+      setError("Please sign in to manage categories.");
+      return;
+    }
+
     const confirmed = window.confirm(
       `Archive "${category.name}"?`
     );
@@ -201,7 +225,6 @@ function Categories() {
       setError("");
 
       const archivedCategory = await archiveCategory(
-        user.id,
         category.id
       );
 
@@ -213,7 +236,7 @@ function Categories() {
         )
       );
     } catch (err) {
-      console.error(err);
+      console.error("Unable to archive category:", err);
 
       setError(
         err.response?.data?.message ||
@@ -228,9 +251,7 @@ function Categories() {
     return categories.filter((category) => {
       const matchesSearch =
         !searchTerm ||
-        category.name
-          .toLowerCase()
-          .includes(searchTerm);
+        category.name?.toLowerCase().includes(searchTerm);
 
       const matchesType =
         activeType === "ALL" ||
@@ -273,7 +294,6 @@ function Categories() {
 
   return (
     <div className="space-y-8">
-
       {/* Header */}
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
@@ -292,8 +312,10 @@ function Categories() {
         </div>
 
         <button
+          type="button"
           onClick={openCreateForm}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+          disabled={!user?.id}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus size={17} />
           Add Category
@@ -306,6 +328,7 @@ function Categories() {
           <span>{error}</span>
 
           <button
+            type="button"
             onClick={() => setError("")}
             className="rounded-lg p-1 hover:bg-rose-100"
           >
@@ -344,7 +367,6 @@ function Categories() {
       {/* Filters */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
           {/* Search */}
           <div className="relative w-full lg:max-w-sm">
             <Search
@@ -375,9 +397,7 @@ function Categories() {
               <FilterButton
                 key={type.value}
                 active={activeType === type.value}
-                onClick={() =>
-                  setActiveType(type.value)
-                }
+                onClick={() => setActiveType(type.value)}
               >
                 {type.label}
               </FilterButton>
@@ -412,7 +432,6 @@ function Categories() {
 
       {/* Categories */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
         <div className="border-b border-slate-200 px-5 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -421,8 +440,7 @@ function Categories() {
               </h2>
 
               <p className="mt-1 text-xs text-slate-500">
-                {filteredCategories.length} categories
-                displayed
+                {filteredCategories.length} categories displayed
               </p>
             </div>
           </div>
@@ -450,8 +468,7 @@ function Categories() {
             </h3>
 
             <p className="mt-1 text-sm text-slate-500">
-              Try changing your filters or create a
-              custom category.
+              Try changing your filters or create a custom category.
             </p>
           </div>
         ) : (
@@ -460,12 +477,8 @@ function Categories() {
               <CategoryRow
                 key={category.id}
                 category={category}
-                onEdit={() =>
-                  openEditForm(category)
-                }
-                onArchive={() =>
-                  handleArchive(category)
-                }
+                onEdit={() => openEditForm(category)}
+                onArchive={() => handleArchive(category)}
               />
             ))}
           </div>
@@ -488,11 +501,7 @@ function Categories() {
   );
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-}) {
+function StatCard({ icon: Icon, label, value }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3">
@@ -514,13 +523,10 @@ function StatCard({
   );
 }
 
-function FilterButton({
-  active,
-  onClick,
-  children,
-}) {
+function FilterButton({ active, onClick, children }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
         active
@@ -533,19 +539,13 @@ function FilterButton({
   );
 }
 
-function CategoryRow({
-  category,
-  onEdit,
-  onArchive,
-}) {
-  const typeLabel =
-    category.categoryType
-      ?.toLowerCase()
-      .replace("_", " ");
+function CategoryRow({ category, onEdit, onArchive }) {
+  const typeLabel = category.categoryType
+    ?.toLowerCase()
+    .replace("_", " ");
 
   return (
     <div className="flex flex-col gap-4 px-5 py-4 transition hover:bg-slate-50 sm:flex-row sm:items-center">
-
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100">
           <Tag
@@ -572,9 +572,7 @@ function CategoryRow({
               {typeLabel}
             </span>
 
-            <span className="text-slate-300">
-              •
-            </span>
+            <span className="text-slate-300">•</span>
 
             <span
               className={`text-xs font-medium ${
@@ -589,27 +587,25 @@ function CategoryRow({
         </div>
       </div>
 
-      {!category.system && (
+      {!category.system && category.status === "ACTIVE" && (
         <div className="flex items-center gap-2 sm:shrink-0">
-          {category.status === "ACTIVE" && (
-            <>
-              <button
-                onClick={onEdit}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white hover:border-slate-300"
-              >
-                <Edit3 size={14} />
-                Edit
-              </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+          >
+            <Edit3 size={14} />
+            Edit
+          </button>
 
-              <button
-                onClick={onArchive}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-              >
-                <Archive size={14} />
-                Archive
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={onArchive}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+          >
+            <Archive size={14} />
+            Archive
+          </button>
         </div>
       )}
     </div>
@@ -628,13 +624,10 @@ function CategoryFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
-
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="font-semibold text-slate-950">
-              {editingCategory
-                ? "Edit Category"
-                : "Create Category"}
+              {editingCategory ? "Edit Category" : "Create Category"}
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
@@ -645,17 +638,16 @@ function CategoryFormModal({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            disabled={saving}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
           >
             <X size={18} />
           </button>
         </div>
 
-        <form
-          onSubmit={onSubmit}
-          className="space-y-5 p-5"
-        >
+        <form onSubmit={onSubmit} className="space-y-5 p-5">
           {error && (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               {error}
@@ -745,9 +737,7 @@ function CategoryFormModal({
               ) : (
                 <>
                   <Plus size={16} />
-                  {editingCategory
-                    ? "Save Changes"
-                    : "Create Category"}
+                  {editingCategory ? "Save Changes" : "Create Category"}
                 </>
               )}
             </button>

@@ -1,3 +1,4 @@
+
 package com.financeflow.payment.service;
 
 import com.financeflow.payment.dto.CreatePaymentMethodRequest;
@@ -7,6 +8,7 @@ import com.financeflow.payment.entity.PaymentMethod;
 import com.financeflow.payment.repository.PaymentMethodRepository;
 import com.financeflow.user.entity.User;
 import com.financeflow.user.repository.UserRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,11 +35,14 @@ public class PaymentMethodService {
             CreatePaymentMethodRequest request
     ) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("User not found"));
+
+        String name = request.getName().trim();
 
         if (paymentMethodRepository.existsByUserIdAndNameIgnoreCase(
-                userId, request.getName())) {
-
+                userId, name
+        )) {
             throw new IllegalArgumentException(
                     "Payment method with this name already exists"
             );
@@ -45,7 +50,7 @@ public class PaymentMethodService {
 
         PaymentMethod paymentMethod = new PaymentMethod();
         paymentMethod.setUser(user);
-        paymentMethod.setName(request.getName().trim());
+        paymentMethod.setName(name);
         paymentMethod.setMethodType(request.getMethodType());
 
         return toResponse(paymentMethodRepository.save(paymentMethod));
@@ -55,7 +60,8 @@ public class PaymentMethodService {
     public List<PaymentMethodResponse> getPaymentMethods(UUID userId) {
 
         userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("User not found"));
 
         return paymentMethodRepository.findByUserId(userId)
                 .stream()
@@ -69,9 +75,12 @@ public class PaymentMethodService {
             UUID userId,
             UpdatePaymentMethodRequest request
     ) {
-        PaymentMethod paymentMethod = paymentMethodRepository.findById(paymentMethodId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Payment method not found"));
+        PaymentMethod paymentMethod =
+                paymentMethodRepository.findById(paymentMethodId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Payment method not found"
+                                ));
 
         if (!paymentMethod.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException(
@@ -79,22 +88,26 @@ public class PaymentMethodService {
             );
         }
 
-        if (!paymentMethod.getName().equalsIgnoreCase(request.getName())
-                && paymentMethodRepository.existsByUserIdAndNameIgnoreCase(
-                userId, request.getName())) {
+        String name = request.getName().trim();
 
+        if (!paymentMethod.getName().equalsIgnoreCase(name)
+                && paymentMethodRepository.existsByUserIdAndNameIgnoreCase(
+                userId, name
+        )) {
             throw new IllegalArgumentException(
                     "Payment method with this name already exists"
             );
         }
 
-        paymentMethod.setName(request.getName().trim());
+        paymentMethod.setName(name);
         paymentMethod.setMethodType(request.getMethodType());
 
         return toResponse(paymentMethodRepository.save(paymentMethod));
     }
 
-    private PaymentMethodResponse toResponse(PaymentMethod paymentMethod) {
+    private PaymentMethodResponse toResponse(
+            PaymentMethod paymentMethod
+    ) {
         return new PaymentMethodResponse(
                 paymentMethod.getId(),
                 paymentMethod.getName(),

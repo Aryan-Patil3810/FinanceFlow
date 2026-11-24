@@ -23,7 +23,9 @@ function Accounts() {
 
   const selectedCurrency = (
     preferences?.displayCurrency || "USD"
-  ).trim().toUpperCase();
+  )
+    .trim()
+    .toUpperCase();
 
   const locale = preferences?.locale || "en-IN";
 
@@ -32,16 +34,17 @@ function Accounts() {
   const [error, setError] = useState("");
   const [currencyError, setCurrencyError] = useState("");
 
-  // Conversion rate for each account currency into display currency.
   const [conversionRates, setConversionRates] = useState(null);
-  const [displayCurrency, setDisplayCurrency] = useState(selectedCurrency);
+  const [displayCurrency, setDisplayCurrency] = useState(
+    selectedCurrency
+  );
 
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [accountView, setAccountView] = useState("ACTIVE");
   const [editingAccount, setEditingAccount] = useState(null);
 
-  // Load accounts.
+  // Load authenticated user's accounts.
   useEffect(() => {
     let cancelled = false;
 
@@ -56,16 +59,19 @@ function Accounts() {
         setLoading(true);
         setError("");
 
-        const data = await getAccounts(user.id);
+        const data = await getAccounts();
 
         if (!cancelled) {
-          setAccounts(data);
+          setAccounts(Array.isArray(data) ? data : []);
         }
       } catch (err) {
         console.error("Unable to load accounts:", err);
 
         if (!cancelled) {
-          setError("Unable to load accounts.");
+          setError(
+            err.response?.data?.message ||
+              "Unable to load accounts."
+          );
         }
       } finally {
         if (!cancelled) {
@@ -81,7 +87,7 @@ function Accounts() {
     };
   }, [user?.id]);
 
-  // Load exchange rates for all account currencies.
+  // Load exchange rates for account currencies.
   useEffect(() => {
     let cancelled = false;
 
@@ -102,7 +108,6 @@ function Accounts() {
       ];
 
       try {
-        // The currency rate API uses USD as its base currency.
         const rateEntries = await Promise.all(
           currencies.map(async (currency) => {
             if (currency === "USD") {
@@ -121,7 +126,6 @@ function Accounts() {
         if (cancelled) return;
 
         const usdRates = Object.fromEntries(rateEntries);
-
         const targetRate = usdRates[selectedCurrency];
 
         if (
@@ -145,7 +149,6 @@ function Accounts() {
             );
           }
 
-          // Convert source currency into the selected display currency.
           rates[sourceCurrency] = targetRate / sourceRate;
         });
 
@@ -173,13 +176,15 @@ function Accounts() {
   }, [accounts, selectedCurrency]);
 
   async function handleCreateAccount(account) {
+    if (!user?.id) {
+      setError("Please sign in to create an account.");
+      return;
+    }
+
     try {
       setError("");
 
-      const createdAccount = await createAccount(
-        user.id,
-        account
-      );
+      const createdAccount = await createAccount(account);
 
       setAccounts((current) => [
         ...current,
@@ -188,7 +193,7 @@ function Accounts() {
 
       setShowForm(false);
     } catch (err) {
-      console.error(err);
+      console.error("Unable to create account:", err);
 
       setError(
         err.response?.data?.message ||
@@ -198,11 +203,15 @@ function Accounts() {
   }
 
   async function handleUpdateAccount(account) {
+    if (!user?.id || !editingAccount?.id) {
+      setError("Unable to identify the account to update.");
+      return;
+    }
+
     try {
       setError("");
 
       const updatedAccount = await updateAccount(
-        user.id,
         editingAccount.id,
         account
       );
@@ -217,7 +226,7 @@ function Accounts() {
 
       setEditingAccount(null);
     } catch (err) {
-      console.error(err);
+      console.error("Unable to update account:", err);
 
       setError(
         err.response?.data?.message ||
@@ -227,13 +236,15 @@ function Accounts() {
   }
 
   async function handleArchiveAccount(id) {
+    if (!user?.id) {
+      setError("Please sign in to archive an account.");
+      return;
+    }
+
     try {
       setError("");
 
-      const archivedAccount = await archiveAccount(
-        user.id,
-        id
-      );
+      const archivedAccount = await archiveAccount(id);
 
       setAccounts((current) =>
         current.map((account) =>
@@ -243,7 +254,7 @@ function Accounts() {
         )
       );
     } catch (err) {
-      console.error(err);
+      console.error("Unable to archive account:", err);
 
       setError(
         err.response?.data?.message ||
@@ -255,7 +266,7 @@ function Accounts() {
   const filteredAccounts = accounts.filter(
     (account) =>
       account.name
-        .toLowerCase()
+        ?.toLowerCase()
         .includes(search.toLowerCase()) &&
       account.status === accountView
   );
@@ -299,7 +310,8 @@ function Accounts() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+          disabled={!user?.id}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus size={17} />
           Add Account
