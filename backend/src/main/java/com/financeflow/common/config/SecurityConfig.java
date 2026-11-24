@@ -102,7 +102,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(
                 List.of(
                         "http://localhost:5173",
-                        "https://financeflow.vercel.app"
+                        "https://finance-flow-nu-mauve.vercel.app"
                 )
         );
 
