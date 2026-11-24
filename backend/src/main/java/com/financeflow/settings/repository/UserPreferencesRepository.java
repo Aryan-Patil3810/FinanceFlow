@@ -1,0 +1,14 @@
+
+package com.financeflow.settings.repository;
+
+import com.financeflow.settings.entity.UserPreferences;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface UserPreferencesRepository
+        extends JpaRepository<UserPreferences, UUID> {
+
+    Optional<UserPreferences> findByUserId(UUID userId);
+}

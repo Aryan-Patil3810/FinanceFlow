@@ -48,3 +48,14 @@ SELECT
 FROM categories
 WHERE user_id IS NULL
 ORDER BY category_type, name;
+
+
+SELECT
+    installed_rank,
+    version,
+    description,
+    type,
+    script,
+    success
+FROM flyway_schema_history
+ORDER BY installed_rank;

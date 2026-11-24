@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: backend
+
+  datasource:
+    url: ${url}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 2
+
+server:
+  port: 8080
