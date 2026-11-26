@@ -1,3 +1,4 @@
+
 import { Plus } from "lucide-react";
 import {
   useCallback,
@@ -330,17 +331,21 @@ function PaymentMethods() {
 
   /* Load payment methods */
   const loadMethods = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setMethods([]);
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
       setError("");
 
-      const data = await getPaymentMethods(user.id);
+      const data = await getPaymentMethods();
 
       setMethods(data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load payment methods:", err);
 
       setError(
         err.response?.data?.message ||
@@ -362,12 +367,11 @@ function PaymentMethods() {
 
       if (editingMethod) {
         await updatePaymentMethod(
-          user.id,
           editingMethod.id,
           data
         );
       } else {
-        await createPaymentMethod(user.id, data);
+        await createPaymentMethod(data);
       }
 
       setShowForm(false);
@@ -375,7 +379,7 @@ function PaymentMethods() {
 
       await loadMethods();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to save payment method:", err);
 
       setError(
         err.response?.data?.message ||
