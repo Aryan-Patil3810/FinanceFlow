@@ -1,5 +1,8 @@
+
 package com.financeflow.common.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,6 +15,9 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(
@@ -43,9 +49,8 @@ public class GlobalExceptionHandler {
                 null
         );
 
-
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(apiError);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(apiError);
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -59,8 +64,7 @@ public class GlobalExceptionHandler {
                 null
         );
 
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(apiError);
     }
 
@@ -68,7 +72,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleUnexpected(
             Exception ex) {
 
-        // Log the full exception internally using a logger.
+        log.error("Unexpected backend exception", ex);
 
         ApiError apiError = new ApiError(
                 500,
@@ -77,8 +81,7 @@ public class GlobalExceptionHandler {
                 null
         );
 
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(apiError);
     }
 }
