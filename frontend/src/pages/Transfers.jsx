@@ -13,7 +13,7 @@ import {
 
 import {
   createTransfer,
-  
+  getTransfers
 } from "../services/transferService";
 import { useAuth } from "../context/AuthContext";
 import { usePreferences } from "../context/PreferencesContext";
